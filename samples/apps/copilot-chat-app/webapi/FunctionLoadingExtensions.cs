@@ -65,5 +65,8 @@ internal static class FunctionLoadingExtensions
 
         var documentMemorySkill = new DocumentMemorySkill(promptSettings, documentMemoryOptions);
         kernel.ImportSkill(documentMemorySkill, nameof(DocumentMemorySkill));
+
+        var powerBITomSkill = new PowerBITomSkill();
+        kernel.ImportSkill(powerBITomSkill, nameof(PowerBITomSkill));
     }
 }
