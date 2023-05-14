@@ -215,6 +215,7 @@ public class ChatSkill
         SKContext plannerContext = Utilities.CopyContextWithVariablesClone(context);
 
         // Use the user intent message as the input to the plan.
+        // This place likely has problem. It overrides the input....
         plannerContext.Variables.Update(plannerContext["userIntent"]);
 
         // Check if plan exists in ask's context variables.
@@ -233,8 +234,28 @@ public class ChatSkill
                );
             var plan = Plan.FromJson(planJson, newPlanContext);
 
+
+            // Get input from state
+            ContextVariables hackWithState = new ContextVariables(plan.State.Input);
+            var enumerator = context.Variables.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                KeyValuePair<string, string> variable = enumerator.Current;
+                if (!hackWithState.ContainsKey(variable.Key))
+                {
+                    hackWithState.Set(variable.Key, variable.Value);
+                }
+            }
+
+            var plannerContextHack = new SKContext(
+                hackWithState,
+                context.Memory,
+                context.Skills,
+                context.Log,
+                context.CancellationToken);
+
             // Invoke plan
-            SKContext planContext = await plan.InvokeAsync(plannerContext);
+            SKContext planContext = await plan.InvokeAsync(plannerContextHack);
             int tokenLimit = int.Parse(context["tokenLimit"], new NumberFormatInfo());
 
             // The result of the plan may be from an OpenAPI skill. Attempt to extract JSON from the response.

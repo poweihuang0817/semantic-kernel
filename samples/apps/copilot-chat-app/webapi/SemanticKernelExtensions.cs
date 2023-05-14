@@ -97,6 +97,9 @@ internal static class SemanticKernelExtensions
         // Time skill
         kernel.ImportSkill(new TimeSkill(), nameof(TimeSkill));
 
+        // Add power bi tom skill
+        kernel.ImportSkill(new PowerBITomSkill(), nameof(PowerBITomSkill));
+
         // Document memory skill
         kernel.ImportSkill(new DocumentMemorySkill(
                 sp.GetRequiredService<IOptions<PromptsOptions>>(),

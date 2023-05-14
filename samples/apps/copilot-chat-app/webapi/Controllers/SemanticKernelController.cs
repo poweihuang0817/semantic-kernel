@@ -177,6 +177,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
             planner.Kernel.ImportSkill(new CalendarSkill(new OutlookCalendarConnector(graphServiceClient)), "calendar");
             planner.Kernel.ImportSkill(new EmailSkill(new OutlookMailConnector(graphServiceClient)), "email");
         }
+
+        // Get power bi tom
+        planner.Kernel.ImportSkill(new PowerBITomSkill(), "PowerBITom");
     }
 
     /// <summary>
