@@ -87,10 +87,10 @@ public class PowerBITomSkill
         return promptTemplate;
     }
 
-    [SKFunction("Given workspace name and dataset name, return dataset info of a power bi workspace")]
+    [SKFunction("Given workspace name, dataset name and table name, return table schema.")]
     [SKFunctionContextParameter(Name = TomSkillParameters.WorkspaceName, Description = "Workspace name for power bi workspace")]
     [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Dataset name for power bi workspace")]
-    [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Table name for power bi workspace")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.TableName, Description = "Table name for power bi workspace")]
     public string GetTableSchema(SKContext context)
     {
         if (!context.Variables.Get(TomSkillParameters.DatasetName, out string datasetName))
