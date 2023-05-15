@@ -131,4 +131,54 @@ public class PowerBITomSkill
 
         return promptTemplate;
     }
+
+    [SKFunction("Given workspace name, dataset name and table name, return M program of table.")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.WorkspaceName, Description = "Workspace name for power bi workspace")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Dataset name for power bi workspace")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.TableName, Description = "Table name for power bi workspace")]
+    public string GetMProgram(SKContext context)
+    {
+        if (!context.Variables.Get(TomSkillParameters.DatasetName, out string datasetName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.DatasetName}.");
+            return $"Input insufficient. No {TomSkillParameters.DatasetName}.";
+        }
+
+        if (!context.Variables.Get(TomSkillParameters.WorkspaceName, out string workspaceName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.WorkspaceName}.");
+            return $"Input insufficient. No {TomSkillParameters.WorkspaceName}.";
+        }
+
+        if (!context.Variables.Get(TomSkillParameters.TableName, out string tableName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.TableName}.");
+            return $"Input insufficient. No {TomSkillParameters.TableName}.";
+        }
+
+        string workspaceConnection = $"powerbi://api.powerbi.com/v1.0/myorg/{workspaceName}";
+        string connectString = $"DataSource={workspaceConnection};";
+        string promptTemplate = "";
+        using (Server server = new Server())
+        {
+            server.Connect(connectString);
+
+            string targetDatabaseName = datasetName;
+            Database database = server.Databases.GetByName(targetDatabaseName);
+            Table table = database.Model.Tables.Find(tableName);
+
+            foreach (Partition partition in table.Partitions)
+            {
+                if (partition.SourceType == PartitionSourceType.M)
+                {
+                    var source = (MPartitionSource) partition.Source;
+                    string prompt = $"The M program for table {tableName}, dataset name {datasetName}, workspace name {workspaceName} is:";
+                    return prompt + source.Expression + "\n.";
+                }    
+            }
+
+        }
+
+        return promptTemplate;
+    }
 }
