@@ -246,6 +246,6 @@ public class PowerBITomSkill
             database.Model.SaveChanges();
         }
 
-        return "Column type altered to decimal successfully.";
+        return $"Column type altered to decimal successfully for column {columnName}, table {tableName}, dataset name {datasetName}, workspace name {workspaceName}.";
     }
 }
