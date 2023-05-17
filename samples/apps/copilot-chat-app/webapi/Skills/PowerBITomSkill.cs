@@ -1,4 +1,5 @@
-﻿using Microsoft.AnalysisServices.Tabular;
+﻿using System.Data.Common;
+using Microsoft.AnalysisServices.Tabular;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
 
@@ -123,7 +124,7 @@ public class PowerBITomSkill
 
         string workspaceConnection = $"powerbi://api.powerbi.com/v1.0/myorg/{workspaceName}";
         string connectString = $"DataSource={workspaceConnection};";
-        string promptTemplate = "";
+        string promptTemplate = $"Table schema for table {tableName}, dataset name {datasetName}, workspace name {workspaceName}:"; ;
         using (Server server = new Server())
         {
             server.Connect(connectString);
@@ -247,5 +248,48 @@ public class PowerBITomSkill
         }
 
         return $"Column type altered to decimal successfully for column {columnName}, table {tableName}, dataset name {datasetName}, workspace name {workspaceName}.";
+    }
+
+    [SKFunction("Given workspace name and dataset name, return dataset problem and suggestions.")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.WorkspaceName, Description = "Workspace name for power bi workspace")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Dataset name for power bi workspace")]
+    public string GetDatasetProblemAndSuggestion(SKContext context)
+    {
+        if (!context.Variables.Get(TomSkillParameters.DatasetName, out string datasetName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.DatasetName}.");
+            return $"Input insufficient. No {TomSkillParameters.DatasetName}.";
+        }
+
+        if (!context.Variables.Get(TomSkillParameters.WorkspaceName, out string workspaceName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.WorkspaceName}.");
+            return $"Input insufficient. No {TomSkillParameters.WorkspaceName}.";
+        }
+
+        string workspaceConnection = $"powerbi://api.powerbi.com/v1.0/myorg/{workspaceName}";
+        string connectString = $"DataSource={workspaceConnection};";
+        string promptTemplate = "";
+        using (Server server = new Server())
+        {
+            server.Connect(connectString);
+
+            string targetDatabaseName = datasetName;
+            Database database = server.Databases.GetByName(targetDatabaseName);
+
+            foreach (Table table in database.Model.Tables)
+            {
+                foreach (Column column in table.Columns)
+                {
+                    if (column.DataType == DataType.Double)
+                    {
+                        promptTemplate += $"The model is problematic becasue column type is double for column {column.Name}, table {table.Name}, dataset name {datasetName}, workspace name {workspaceName}. Make it decimal.";
+                        return promptTemplate;
+                    }
+                }
+            }
+        }
+
+        return $"Everything is perfect for dataset name {datasetName}, workspace name {workspaceName}.";
     }
 }
