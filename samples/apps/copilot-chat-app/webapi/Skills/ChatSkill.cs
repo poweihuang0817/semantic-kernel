@@ -477,7 +477,7 @@ public class ChatSkill
         }
 
         // Extract semantic memory
-        await this.ExtractSemanticMemoryAsync(chatId, chatContext);
+        // await this.ExtractSemanticMemoryAsync(chatId, chatContext);
 
         context.Variables.Update(response);
         context.Variables.Set("userId", "Bot");

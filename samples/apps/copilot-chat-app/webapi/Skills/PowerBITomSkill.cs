@@ -1,7 +1,9 @@
 ﻿using System.Data.Common;
 using Microsoft.AnalysisServices.Tabular;
+using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
+using static System.Net.WebRequestMethods;
 
 namespace SemanticKernel.Service.Skills;
 
@@ -36,7 +38,16 @@ public class PowerBITomSkill
         /// Column Type name
         /// </summary>
         public const string ColumnTypeName = "columnTypeName";
+
+        /// <summary>
+        /// Power bi setting
+        /// </summary>
+        public const string SettingName = "settingName";
     }
+
+    private static bool s_firstInvocation = true;
+
+    private const string MemoryCollectionName = "PBIUrl";
 
     [SKFunction("Return dataset name of my power bi workspace")]
     [SKFunctionInput(Description = "Workspace name to search in power bi.")]
@@ -292,4 +303,49 @@ public class PowerBITomSkill
 
         return $"Everything is perfect for dataset name {datasetName}, workspace name {workspaceName}.";
     }
+
+    [SKFunction("For a setting of power bi, get url link of setting page to help cx.")]
+    [SKFunctionName("GetLinkFromTopic")]
+    [SKFunctionContextParameter(Name = TomSkillParameters.SettingName, Description = "Setting name that user want to find.")]
+    public async Task<string> GetLinkFromTopicAsync(SKContext context)
+    {
+        // Check if it's the first invocation
+        if (s_firstInvocation)
+        {
+            // Perform the action you want to do only on the first invocation
+            Console.WriteLine("This is the first invocation!");
+            try
+            {
+                // Set the flag variable to false to indicate that the first invocation has already occurred
+                await context.Memory.SaveInformationAsync(
+                    MemoryCollectionName,
+                    "Large dataset storage format",
+                    "0",
+                    "https://msit.powerbi.com/groups/workspaceId/settings/datasets?ctid=datasetId&openReportSource=SubscribeOthers&experience=power-bi"
+                    );
+            }
+            catch
+            {
+                Console.WriteLine("Some error happened.");
+            }
+
+            s_firstInvocation = false;
+        }
+
+        if (!context.Variables.Get(TomSkillParameters.SettingName, out string settingName))
+        {
+            context.Fail($"Missing variable {TomSkillParameters.DatasetName}.");
+            return $"Input insufficient. No {TomSkillParameters.DatasetName}.";
+        }
+
+        var results = context.Memory.SearchAsync(MemoryCollectionName, settingName, limit: 1, minRelevanceScore: 0.77);
+
+        await foreach (MemoryQueryResult r in results)
+        {
+            return $"The url for setting {settingName} is https://msit.powerbi.com/groups/1c27cb72-99ab-4bb4-b58d-de31b5282580/settings/datasets/b4b40cdb-d3e7-4623-a7a4-bbf0390f1ed6?experience=power-bi";
+        }
+
+        return $"I couldn't find related setting.";
+    }
+
 }

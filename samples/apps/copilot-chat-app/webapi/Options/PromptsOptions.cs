@@ -121,10 +121,10 @@ public class PromptsOptions
         this.SystemDescription,
         this.SystemResponse,
         "{{$userIntent}}",
-        "{{ChatSkill.ExtractUserMemories}}",
-        "{{DocumentMemorySkill.QueryDocuments $INPUT}}",
+        // "{{ChatSkill.ExtractUserMemories}}",
+        // "{{DocumentMemorySkill.QueryDocuments $INPUT}}",
         "{{ChatSkill.AcquireExternalInformation}}",
-        "{{ChatSkill.ExtractChatHistory}}",
+        // "{{ChatSkill.ExtractChatHistory}}",
         this.SystemChatContinuation
     };
 
