@@ -68,47 +68,6 @@ public class PowerBITomSkill
         }
     }
 
-    [SKFunction("Given workspace name and dataset name, return dataset info of a power bi workspace")]
-    [SKFunctionContextParameter(Name = TomSkillParameters.WorkspaceName, Description = "Workspace name for power bi workspace")]
-    [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Dataset name for power bi workspace")]
-    public string GetDatasetInformation(SKContext context)
-    {
-        if (!context.Variables.Get(TomSkillParameters.DatasetName, out string datasetName))
-        {
-            context.Fail($"Missing variable {TomSkillParameters.DatasetName}.");
-            return $"Input insufficient. No {TomSkillParameters.DatasetName}.";
-        }
-
-        if (!context.Variables.Get(TomSkillParameters.WorkspaceName, out string workspaceName))
-        {
-            context.Fail($"Missing variable {TomSkillParameters.WorkspaceName}.");
-            return $"Input insufficient. No {TomSkillParameters.WorkspaceName}.";
-        }
-
-        string workspaceConnection = $"powerbi://api.powerbi.com/v1.0/myorg/{workspaceName}";
-        string connectString = $"DataSource={workspaceConnection};";
-        string promptTemplate = "";
-        using (Server server = new Server())
-        {
-            server.Connect(connectString);
-
-            string targetDatabaseName = datasetName;
-            Database database = server.Databases.GetByName(targetDatabaseName);
-
-            promptTemplate += ("Name: " + database.Name);
-            promptTemplate += ("ID: " + database.ID);
-            promptTemplate += ("ModelType: " + database.ModelType);
-            promptTemplate += ("CompatibilityLevel: " + database.CompatibilityLevel);
-            promptTemplate += ("LastUpdated: " + database.LastUpdate);
-            promptTemplate += ("EstimatedSize: " + database.EstimatedSize);
-            promptTemplate +=("CompatibilityMode: " + database.CompatibilityMode);
-            promptTemplate +=("LastProcessed: " + database.LastProcessed);
-            promptTemplate += ("LastSchemaUpdate: " + database.LastSchemaUpdate);
-        }
-
-        return promptTemplate;
-    }
-
     [SKFunction("Given workspace name, dataset name and table name, return table schema.")]
     [SKFunctionContextParameter(Name = TomSkillParameters.WorkspaceName, Description = "Workspace name for power bi workspace")]
     [SKFunctionContextParameter(Name = TomSkillParameters.DatasetName, Description = "Dataset name for power bi workspace")]
