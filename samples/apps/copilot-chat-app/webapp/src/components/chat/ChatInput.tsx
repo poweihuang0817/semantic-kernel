@@ -9,11 +9,12 @@ import React, { useRef } from 'react';
 import { Constants } from '../../Constants';
 import { AuthHelper } from '../../libs/auth/AuthHelper';
 import { AlertType } from '../../libs/models/AlertType';
-import { useDocumentImportService } from '../../libs/semantic-kernel/useDocumentImport';
+import { DocumentImportService } from '../../libs/services/DocumentImportService';
 import { useAppDispatch, useAppSelector } from '../../redux/app/hooks';
 import { RootState } from '../../redux/app/store';
 import { addAlert } from '../../redux/features/app/appSlice';
-import { useSKSpeechService } from './../../libs/semantic-kernel/useSKSpeech';
+import { editConversationInput } from '../../redux/features/conversations/conversationsSlice';
+import { SpeechService } from './../../libs/services/SpeechService';
 import { TypingIndicatorRenderer } from './typing-indicator/TypingIndicatorRenderer';
 
 const log = debug(Constants.debug.root).extend('chat-input');
@@ -25,7 +26,7 @@ const useClasses = makeStyles({
         ...shorthands.margin(0, '72px'),
     },
     typingIndicator: {
-        height: '28px',
+        maxHeight: '28px',
     },
     content: {
         ...shorthands.gap(tokens.spacingHorizontalM),
@@ -63,41 +64,47 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const { isTyping, onSubmit } = props;
     const classes = useClasses();
-    const { instance, accounts } = useMsal();
+    const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
     const dispatch = useAppDispatch();
     const [value, setValue] = React.useState('');
-    const [previousValue, setPreviousValue] = React.useState('');
     const [recognizer, setRecognizer] = React.useState<speechSdk.SpeechRecognizer>();
     const [isListening, setIsListening] = React.useState(false);
-    const speechService = useSKSpeechService(process.env.REACT_APP_BACKEND_URI as string);
     const [documentImporting, SetDocumentImporting] = React.useState(false);
-    const documentImportService = useDocumentImportService(process.env.REACT_APP_BACKEND_URI as string);
+    const documentImportService = new DocumentImportService(process.env.REACT_APP_BACKEND_URI as string);
     const documentFileRef = useRef<HTMLInputElement | null>(null);
-    const { selectedId } = useAppSelector((state: RootState) => state.conversations);
+    const { conversations, selectedId } = useAppSelector((state: RootState) => state.conversations);
 
     React.useEffect(() => {
-        if (recognizer) return;
-        void (async () => {
-            var response = await speechService.validSpeechKeyAsync();
+        async function initSpeechRecognizer() {
+            const speechService = new SpeechService(process.env.REACT_APP_BACKEND_URI as string);
+            var response = await speechService.getSpeechTokenAsync(await AuthHelper.getSKaaSAccessToken(instance, inProgress));
             if (response.isSuccess) {
-                const newRecognizer = await speechService.getSpeechRecognizerAsyncWithValidKey(response);
-                setRecognizer(newRecognizer);
+                const recognizer = await speechService.getSpeechRecognizerAsyncWithValidKey(response);
+                setRecognizer(recognizer);
             }
-        })();
-    }, [recognizer, speechService]);
+        }
+
+        initSpeechRecognizer();
+    }, [instance, inProgress]);
+
+    React.useEffect(() => {
+        const chatState = conversations[selectedId];
+        setValue(chatState.input);
+    }, [conversations, selectedId]);
 
     const handleSpeech = () => {
         setIsListening(true);
-
-        recognizer?.recognizeOnceAsync((result) => {
-            if (result.reason === speechSdk.ResultReason.RecognizedSpeech) {
-                if (result.text && result.text.length > 0) {
-                    handleSubmit(result.text);
+        if (recognizer) {
+            recognizer.recognizeOnceAsync((result) => {
+                if (result.reason === speechSdk.ResultReason.RecognizedSpeech) {
+                    if (result.text && result.text.length > 0) {
+                        handleSubmit(result.text);
+                    }
                 }
-            }
-            setIsListening(false);
-        });
+                setIsListening(false);
+            });
+        }
     };
 
     const selectDocument = () => {
@@ -113,7 +120,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     account!.homeAccountId!,
                     selectedId,
                     documentFile,
-                    await AuthHelper.getSKaaSAccessToken(instance),
+                    await AuthHelper.getSKaaSAccessToken(instance, inProgress),
                 );
                 dispatch(addAlert({ message: 'Document uploaded successfully', type: AlertType.Success }));
             } catch (e: any) {
@@ -134,8 +141,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 return; // only submit if data is not empty
             }
             onSubmit(data);
-            setPreviousValue(data);
             setValue('');
+            dispatch(editConversationInput({ id: selectedId, newInput: '' }));
         } catch (error) {
             const message = `Error submitting chat input: ${(error as Error).message}`;
             log(message);
@@ -146,7 +153,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 }),
             );
         }
-        // void chat.sendTypingStopSignalAsync();
     };
 
     return (
@@ -166,19 +172,15 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                             setValue(chatInput.value);
                         }
                     }}
-                    onChange={(_event, data) => setValue(data.value)}
+                    onChange={(_event, data) => {
+                        setValue(data.value);
+                        dispatch(editConversationInput({ id: selectedId, newInput: data.value }));
+                    }}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
                             handleSubmit(value);
-                            return;
-                        } else if (value === '' && previousValue !== '' && event.key === 'ArrowUp') {
-                            event.preventDefault();
-                            setValue(previousValue);
-                            return;
                         }
-
-                        // void chat.sendTypingStartSignalAsync();
                     }}
                 />
             </div>
